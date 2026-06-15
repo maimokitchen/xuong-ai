@@ -300,64 +300,29 @@ function saveLib() {
   localStorage.setItem('xuong_lib_v1', JSON.stringify(state.library));
 }
 
-// ============ API ============
-const BRAINSTORM_SYSTEM = `Bạn là "Kiến trúc sư trợ lý AI" - chuyên gia tư vấn thân thiện, nói tiếng Việt tự nhiên, giúp người dùng (KHÔNG biết code) thiết kế một trợ lý AI giải quyết vấn đề cụ thể trong công việc của họ.
-
-Nhiệm vụ:
-1. Hiểu rõ: ngành nghề, vấn đề cụ thể, ai sẽ dùng trợ lý, trợ lý cần làm gì hàng ngày.
-2. Mỗi lượt CHỈ hỏi 1 câu hỏi, ngắn gọn, kèm ví dụ gợi ý trong ngoặc.
-3. Nếu người dùng mơ hồ, gợi ý 2-3 hướng cụ thể để họ chọn.
-4. Gợi ý khi phù hợp: trợ lý có thể được bật khả năng TÌM KIẾM WEB (tra cứu thông tin mới) hoặc đọc tài liệu GOOGLE DRIVE - hỏi xem họ có cần không.
-5. Sau 3-5 lượt đã đủ thông tin, tóm tắt ngắn bằng gạch đầu dòng và nói: "Mình đã đủ thông tin rồi! Bạn bấm nút Tạo bản thiết kế bên dưới nhé."
-
-Giọng văn: gần gũi, khích lệ, không thuật ngữ kỹ thuật. Trả lời dưới 120 từ mỗi lượt. Luôn viết tiếng Việt có dấu đầy đủ.`;
-
-const BLUEPRINT_SYSTEM = `Bạn là chuyên gia thiết kế trợ lý AI. Dựa trên cuộc trò chuyện brainstorm, tạo bản thiết kế theo Framework 7 Lớp.
-
-CHỈ trả về JSON hợp lệ, KHÔNG lời mở đầu, KHÔNG markdown backticks:
-{"name":"Tên trợ lý ngắn gọn tiếng Việt","emoji":"1 emoji","tagline":"1 câu mô tả nhiệm vụ","audience":"Ai sử dụng","need_web":true/false,"need_drive":false,"system_prompt":"<FRAMEWORK 7 LỚP — viết liền, tiếng Việt có dấu, tối đa 220 từ>\nLỚP 1 — VAI TRÒ: Bạn là [tên vai trò], chuyên [lĩnh vực], phục vụ [mục tiêu cụ thể].\nLỚP 2 — MỤC TIÊU SỬ DỤNG: Nhiệm vụ chính là [làm gì cụ thể].\nLỚP 3 — NGƯỜI DÙNG MỤC TIÊU: Người dùng là [ai], có nỗi đau [gì], cần kết quả [gì].\nLỚP 4 — DỮ LIỆU NỀN: Hiểu sẵn [thông tin nền, quy trình, kiến thức cần biết].\nLỚP 5 — QUY TRÌNH XỬ LÝ: Khi nhận yêu cầu, thực hiện: [bước 1] → [bước 2] → [bước 3].\nLỚP 6 — TIÊU CHUẨN ĐẦU RA: Câu trả lời phải [ngắn/dài], [định dạng], [giọng văn], [những gì phải có/không có].\nLỚP 7 — GIỚI HẠN: Không làm [điều X]. Nếu không biết, hãy [phản hồi dự phòng].","sample_questions":["3 câu hỏi mẫu người dùng thực tế sẽ hỏi"]}
-
-QUAN TRỌNG: system_prompt tối đa 220 từ. Viết tự nhiên, không cần giữ nguyên tiêu đề "LỚP 1", "LỚP 2" — chỉ cần đủ 7 yếu tố theo thứ tự.`;
-
-const REFINE_SYSTEM = `Bạn là chuyên gia tinh chỉnh trợ lý AI theo Framework 7 Lớp. Người dùng sẽ đưa ra yêu cầu chỉnh sửa bằng ngôn ngữ tự nhiên — bạn hiểu ý định, cập nhật system_prompt hiện tại, rồi trả về bản mới.
-
-Framework 7 Lớp cần đảm bảo đủ trong system_prompt:
-- Lớp 1 — Vai trò: Trợ lý là ai, chuyên môn gì, phục vụ mục tiêu gì
-- Lớp 2 — Mục tiêu sử dụng: Nhiệm vụ chính cần làm
-- Lớp 3 — Người dùng mục tiêu: Ai dùng, nỗi đau gì, kết quả mong muốn
-- Lớp 4 — Dữ liệu nền: Kiến thức, quy trình, thông tin cần biết sẵn
-- Lớp 5 — Quy trình xử lý: Các bước thực hiện khi nhận yêu cầu
-- Lớp 6 — Tiêu chuẩn đầu ra: Định dạng, giọng văn, độ dài, những gì bắt buộc/cấm
-- Lớp 7 — Giới hạn & dự phòng: Không làm gì, phản hồi khi không biết
-
-QUY TẮC TRẢ LỜI:
-1. Trước tiên XÁC NHẬN ngắn: "Mình hiểu — bạn muốn [diễn giải yêu cầu]. Mình sẽ [thay đổi gì]."
-2. Sau đó trả về JSON với 2 trường:
-{"explanation":"1-2 câu giải thích thay đổi đã làm","system_prompt":"[system_prompt đã cập nhật đủ 7 lớp, tối đa 220 từ, tiếng Việt có dấu]"}
-
-CHỈ trả về JSON, KHÔNG backticks, KHÔNG lời thêm sau JSON.
-Giọng văn: gần gũi, khích lệ, không thuật ngữ kỹ thuật.`;
-
+// ============ API — Gemini qua Proxy ============
 async function callClaude({ messages, system, useWeb }) {
-  const body = {
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1000,
-    system,
-    messages,
-  };
-  if (useWeb) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      messages,
+      system,
+      model: 'gemini-2.0-flash',
+    }),
   });
+
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message || 'Lỗi API');
-  const text = data.content.filter(i => i.type === 'text').map(i => i.text).join('\n');
-  const toolsUsed = data.content.filter(i => i.type === 'server_tool_use' || i.type === 'mcp_tool_use').map(i => i.name);
-  return { text, toolsUsed };
+  if (data.error) throw new Error(data.error);
+  return { text: data.text, toolsUsed: [] };
 }
+
+const BRAINSTORM_SYSTEM = "Ban la Kien truc su tro ly AI - chuyen gia tu van than thien, noi tieng Viet tu nhien, giup nguoi dung (KHONG biet code) thiet ke mot tro ly AI giai quyet van de cu the trong cong viec cua ho.\n\nNhiem vu:\n1. Hieu ro: nganh nghe, van de cu the, ai se dung tro ly, tro ly can lam gi hang ngay.\n2. Moi luot CHI hoi 1 cau hoi, ngan gon, kem vi du goi y trong ngoac.\n3. Neu nguoi dung mo ho, goi y 2-3 huong cu the de ho chon.\n4. Sau 3-5 luot da du thong tin, tom tat ngan bang gach dau dong va noi: Minh da du thong tin roi! Ban bam nut Tao ban thiet ke ben duoi nhe.\n\nGiong van: gan gui, khich le, khong thuat ngu ky thuat. Tra loi duoi 120 tu moi luot. Luon viet tieng Viet co dau day du.";
+
+const BLUEPRINT_SYSTEM = "Ban la chuyen gia thiet ke tro ly AI. Dua tren cuoc tro chuyen brainstorm, tao ban thiet ke theo Framework 7 Lop.\n\nCHI tra ve JSON hop le, KHONG loi mo dau, KHONG markdown backticks:\n{\"name\":\"Ten tro ly ngan gon tieng Viet\",\"emoji\":\"1 emoji\",\"tagline\":\"1 cau mo ta nhiem vu\",\"audience\":\"Ai su dung\",\"need_web\":false,\"need_drive\":false,\"system_prompt\":\"LOP 1 VAI TRO: [ten vai tro va chuyen mon].\\nLOP 2 MUC TIEU: Nhiem vu chinh la [lam gi cu the].\\nLOP 3 NGUOI DUNG: [ai dung], can [ket qua gi].\\nLOP 4 DU LIEU NEN: Hieu san [thong tin nen].\\nLOP 5 QUY TRINH: Khi nhan yeu cau: [buoc 1] -> [buoc 2] -> [buoc 3].\\nLOP 6 DAU RA: Tra loi phai [dinh dang, giong van, do dai].\\nLOP 7 GIOI HAN: Khong lam [dieu X]. Neu khong biet: [phan hoi du phong].\",\"sample_questions\":[\"cau hoi mau 1\",\"cau hoi mau 2\",\"cau hoi mau 3\"]}\n\nQUAN TRONG: system_prompt toi da 220 tu. JSON phai hop le hoan toan. Viet tieng Viet co dau trong tat ca cac truong.";
+
+const REFINE_SYSTEM = "Ban la chuyen gia tinh chinh tro ly AI theo Framework 7 Lop. Nguoi dung dua ra yeu cau chinh sua - ban hieu y dinh, cap nhat system_prompt, tra ve ban moi.\n\nFramework 7 Lop can du: Vai tro, Muc tieu, Nguoi dung, Du lieu nen, Quy trinh xu ly, Tieu chuan dau ra, Gioi han.\n\nCHI tra ve JSON, KHONG backticks: {\"explanation\":\"1-2 cau giai thich thay doi\",\"system_prompt\":\"[cap nhat du 7 lop, toi da 220 tu, tieng Viet co dau\"}";
+
 
 function extractJSON(raw) {
   let s = raw.replace(/```json|```/g, '').trim();
@@ -684,9 +649,9 @@ function renderPubModal() {
     </div>
   </div>`;
 
-  // Build share URL — dùng URL hiện tại + query param
-  const baseUrl = window.location.href.split('?')[0];
-  const shareUrl = baseUrl + '?share=' + p.code + '&ref=bamboo';
+  // Build share URL — domain cố định
+  const BASE_URL = 'https://xuong-ai-bamboo.vercel.app';
+  const shareUrl = BASE_URL + '?share=' + p.code + '&ref=bamboo';
 
   return `
   <div class="modal-overlay" id="pub-modal">
